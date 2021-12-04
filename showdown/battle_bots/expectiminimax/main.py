@@ -2,7 +2,7 @@ from showdown.battle import Battle
 from showdown.engine.evaluate import evaluate
 from showdown.engine.find_state_instructions import get_all_state_instructions
 from ..helpers import format_decision
-
+from showdown.engine.objects import State
 from showdown.engine.objects import StateMutator
 from showdown.engine.select_best_move import pick_safest
 from showdown.engine.select_best_move import get_payoff_matrix
@@ -13,6 +13,9 @@ import logging
 logger = logging.getLogger(__name__)
 import itertools
 import math
+import copy
+
+bannedMoves = set(['voltswitch', 'uturn', 'outrage'])
 
 #state depth -> value move
 def expectiminimax(state,depth):
@@ -20,12 +23,12 @@ def expectiminimax(state,depth):
     gameOver = state.battle_is_finished()
     if gameOver:
         if gameOver == 1:
-            return float("inf")
+            return (float("inf"), None)
         else:
-            return float("-inf")
+            return (float("-inf"), None)
 
     if depth == 0:
-        return evaluate(state)
+        return (evaluate(state), None)
     #get all availible moves - get_transitions()
     possibleMoves = getAvailableMoves(state)
     moveValueDict = {}
@@ -74,7 +77,7 @@ def getResultingStatesAndProbs(state,movePair):
     #get list of possible outcomes (as instructions to state on how to proceed)
     outcomes = get_all_state_instructions(StateMutator(state),movePair[0],movePair[1])
     for outcome in outcomes:
-        mutator = StateMutator(state)
+        mutator = StateMutator(copy.deepcopy(state))
         #apply the instructions to get the outcome
         mutator.apply(outcome.instructions)
         newState = mutator.state
@@ -85,13 +88,14 @@ def getResultingStatesAndProbs(state,movePair):
 #state -> list of pair of moves
 def getAvailableMoves(state):
     userOptions, opponentOptions = state.get_all_options()
+    userOptions = list(set(userOptions) - bannedMoves)
     return list(itertools.product(userOptions, opponentOptions))
 
 #list of pair of value and move -> move
 #given the best move/value from each possible version of the battle, return a given move
 def pickMoveFromBattles(bestMovesList):
     moveCounter = Counter([moveVal[1] for moveVal in bestMovesList])
-    return moveCounter.most_common(1)[0]
+    return moveCounter.most_common(1)[0][0]
 
 class BattleBot(Battle):
     def __init__(self, *args, **kwargs):
@@ -101,7 +105,7 @@ class BattleBot(Battle):
         battles = self.prepare_battles(join_moves_together=True)
         bestMovesList = []
         for b in battles:
-            val, bestMove = expectiminimax(b, config.depth)
+            val, bestMove = expectiminimax(b.create_state(), config.search_depth)
             bestMovesList.append((val,bestMove))
         bestMove = pickMoveFromBattles(bestMovesList)
         return format_decision(self, bestMove)
