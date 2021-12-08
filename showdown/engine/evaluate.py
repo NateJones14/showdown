@@ -46,7 +46,7 @@ class Scoring:
 
     POKEMON_VOLATILE_STATUSES = {
         constants.LEECH_SEED: -30,
-        constants.SUBSTITUTE: 40,
+        constants.SUBSTITUTE: 25,
         constants.CONFUSION: -20
     }
 

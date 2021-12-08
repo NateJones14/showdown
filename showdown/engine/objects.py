@@ -369,12 +369,18 @@ class Pokemon(object):
         )
 
     def calculate_boosted_stats(self):
+        if self.speed_boost >= 6:
+            effective_speed = 6
+        elif self.speed_boost <= -6:
+            effective_speed = -6
+        else:
+            effective_speed = self.speed_boost
         return {
             constants.ATTACK: boost_multiplier_lookup[self.attack_boost] * self.attack,
             constants.DEFENSE: boost_multiplier_lookup[self.defense_boost] * self.defense,
             constants.SPECIAL_ATTACK: boost_multiplier_lookup[self.special_attack_boost] * self.special_attack,
             constants.SPECIAL_DEFENSE: boost_multiplier_lookup[self.special_defense_boost] * self.special_defense,
-            constants.SPEED: boost_multiplier_lookup[self.speed_boost] * self.speed,
+            constants.SPEED: boost_multiplier_lookup[effective_speed] * self.speed,
         }
 
     def is_grounded(self):

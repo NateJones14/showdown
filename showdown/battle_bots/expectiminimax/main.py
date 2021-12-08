@@ -15,7 +15,7 @@ import itertools
 import math
 import copy
 
-bannedMoves = set(['voltswitch', 'uturn', 'outrage', 'petaldance'])
+bannedMoves = set(['voltswitch', 'uturn', 'outrage', 'petaldance', 'partingshot'])
 
 #state depth -> value move
 def expectiminimax(state,depth):

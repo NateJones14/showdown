@@ -133,6 +133,8 @@ class PSWebsocketClient:
                 split_msg[5] == battle_format
             ):
                 username = split_msg[2].strip()
+            else:
+                print(split)
 
         message = ["/accept " + username]
         await self.send_message('', message)
