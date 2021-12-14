@@ -18,9 +18,9 @@ import random
 
 
 bannedMoves = set(['voltswitch', 'uturn', 'outrage', 'petaldance', 'partingshot'])
-iterations = 800
+iterations = 2000
 explorationConstant = math.sqrt(2)
-maxdepth = 15
+maxdepth = 10
 
 class MCTSNode():
     def __init__(self,state): 
@@ -31,42 +31,34 @@ class MCTSNode():
         #map from movepair to child node
         self.children = {}
         self.nextMoves = getAvailableMoves(state)
+        self.leaf = True
+        #self.leaf = len(self.nextMoves) == len(self.children)
+        self.endNode = state.battle_is_finished() 
 
     # -> boolean
     #runs a MCTS iteration (selection,expansion,simulation,backpropagation)
     #boolean returned is if this node resulted in a win or loss (during backpropgataion)
     def runIteration(self):
-        leaf = not (len(self.children) == len(self.nextMoves)) 
-        if leaf:
-            gameOverCheck = self.state.battle_is_finished() #returns false if ongoing, 1 if user win, -1 if opp. win
-            if gameOverCheck:
-                if gameOverCheck == 1:
-                    self.wins += 1
-                self.total += 1
-                return gameOverCheck == 1
+        self.total += 1
+        if self.endNode == 1:
+            self.wins += 1
+            return True
+        if self.endNode == -1:
+            return False
 
-            #if leaf:
-            #   -choose child
-            #   -run simulation starting from that child
-            #   -update child win/loss and our win/loss
-            #   -return result of win/loss
+        if self.leaf: 
             nextMove = random.choice(list(set(self.nextMoves) - set(self.children.keys())))
-            nextState = applyMove(self.state,nextMove,True)
+            nextState = applyMove(self.state,nextMove)
             self.children[nextMove] = MCTSNode(nextState)
             result = runSimulation(nextState)
             if result:
                 self.wins += 1
                 self.children[nextMove].wins += 1
-            self.total += 1      
             self.children[nextMove].total += 1
+            if len(self.children) == len(self.nextMoves):
+                self.leaf = False
             return result
         else:
-            gameOverCheck = self.state.battle_is_finished()
-            if gameOverCheck:
-                if gameOverCheck == 1:
-                    self.wins += 1
-                self.total += 1
-                return gameOverCheck == 1
             #if non-leaf:
             #   -choose child node
             #   -call runIteration on child
@@ -82,7 +74,6 @@ class MCTSNode():
             result = maxChild.runIteration()
             if result:
                 self.wins += 1
-            self.total += 1
             return result
 
     def mostPlayedMove(self):
@@ -105,28 +96,24 @@ class MCTSNode():
 #returns false if loss should be recorded
 def runSimulation(state):
     moveSimList = []
-    firstSplash = True
     depth = 1
     sim_count = 0
-    currentState = copy.deepcopy(state)
-    while simulationOngoing(currentState):
+    simulationState = StateMutator(copy.deepcopy(state))
+    while simulationOngoing(simulationState.state):
         depth += 1
-        possibleMoves = getAvailableMoves(currentState)
-        nonSwitchPossibleMoves = [pM for pM in possibleMoves if "switch" not in pM[0] and "switch" not in pM[1]]
+        possibleMoves = getAvailableMoves(simulationState.state)
         nextMove = random.choice(possibleMoves)
-        nextState = applyMove(currentState, nextMove)
-        currentState = copy.deepcopy(nextState)
+        simulationState = getRandomOutcome(simulationState, nextMove)
         #print(sim_count)
         moveSimList.append(nextMove)
         if sim_count == 100:
             print(moveSimList)
-            print(currentState)
+            print(simulationState.state)
             print(possibleMoves)
-            firstSplash = False
         sim_count += 1
         if depth >= maxdepth:
             break
-    return evaluate(state) <= evaluate(currentState)
+    return evaluate(state) <= evaluate(simulationState.state)
 
 #state -> boolean
 def simulationOngoing(state):
@@ -139,45 +126,46 @@ def simulationOngoing(state):
         return False
     return True
 
+#StateMutator MovePair -> StateMutator
+#returns a statemutator based on picking a random outcome from a move (random = based on outcome probabilties)
+def getRandomOutcome(stateMutator,move):
+    outcomes = get_all_state_instructions(stateMutator,move[0],move[1])
+    #use outcome% to get random state
+    rand = random.random()
+    randOutcome = None
+    curPercent = 0
+    #may need to normalize?
+    for outcome in outcomes:
+        
+        curPercent = curPercent + outcome.percentage
+        if curPercent > rand:
+            randOutcome = outcome
+            break
+
+    #apply random instruction based on percentages
+    stateMutator.apply(randOutcome.instructions)
+
+    return stateMutator
 
 #state movepair -> state
-def applyMove(state, move, likeliest=False):
+#returns the state of the most likeliest outcome after the move is applied
+def applyMove(state, move):
     outcomes = get_all_state_instructions(StateMutator(state),move[0],move[1])
-    if likeliest:
-        #return most likely state
-        mostLikely = None
-        bestPercent = 0
-        for outcome in outcomes:
-            #find most likely outcome
-            if mostLikely is None:
-                mostLikely = outcome
-                bestPercent = outcome.percentage
-            if outcome.percentage > bestPercent:
-                mostLikely = outcome
-                bestPercent = outcome.percentage
-        mutator = StateMutator(copy.deepcopy(state))
-        mutator.apply(mostLikely.instructions)
+    #return most likely state
+    mostLikely = None
+    bestPercent = 0
+    for outcome in outcomes:
+        #find most likely outcome
+        if mostLikely is None:
+            mostLikely = outcome
+            bestPercent = outcome.percentage
+        if outcome.percentage > bestPercent:
+            mostLikely = outcome
+            bestPercent = outcome.percentage
+    mutator = StateMutator(copy.deepcopy(state))
+    mutator.apply(mostLikely.instructions)
 
-        return mutator.state
-        
-    else:
-        #use outcome% to get random state
-        rand = random.random()
-        randOutcome = None
-        curPercent = 0
-        #may need to normalize?
-        for outcome in outcomes:
-            
-            curPercent = curPercent + outcome.percentage
-            if curPercent > rand:
-                randOutcome = outcome
-                break
-
-        mutator = StateMutator(copy.deepcopy(state))
-        #apply random instruction based on percentages
-        mutator.apply(randOutcome.instructions)
-
-        return mutator.state
+    return mutator.state
 
 #Node Node -> Number
 def getExplorationScore(parentNode, childNode):
@@ -192,7 +180,6 @@ def monteCarloTreeSearch(state):
         userOptions, _ = state.get_all_options()
         userOptions = [uO for uO in userOptions if "switch" in uO]
         return random.choice(userOptions)
-
 
     root = MCTSNode(state)
     for i in range(iterations):

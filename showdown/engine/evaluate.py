@@ -117,6 +117,8 @@ def evaluate(state):
         this_pkmn_score = evaluate_pokemon(pkmn)
         score -= this_pkmn_score
 
+    score -= (Scoring.POKEMON_ALIVE_STATIC * opponent_alive_reserves_count)
+
     # evaluate the side-conditions for the bot
     for condition, count in state.self.side_conditions.items():
         if condition in Scoring.STATIC_SCORED_SIDE_CONDITIONS:
