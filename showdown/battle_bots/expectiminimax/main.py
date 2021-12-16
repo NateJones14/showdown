@@ -14,10 +14,21 @@ logger = logging.getLogger(__name__)
 import itertools
 import math
 import copy
+#outline of file:
+#BattleBot has find_best_move() which calls expectiminimax()
+# - expectiminimax() calls:
+#   - getAvailibleMoves
+#   - getResultingStatesAndProbs
+#   - calculateBestPair
 
-bannedMoves = set(['voltswitch', 'uturn', 'outrage', 'petaldance', 'partingshot'])
+
+
+
+#moves that alter shape of game tree (two moves in one turn or forcing future moves)
+bannedMoves = set(['voltswitch', 'uturn', 'outrage', 'petaldance', 'partingshot', 'flipturn'])
 
 #state depth -> value move
+#return the best move given a starting state and maximum depth
 def expectiminimax(state,depth):
     #if depth = 0 or game_over return value - in expectiminimax
     gameOver = state.battle_is_finished()
@@ -45,10 +56,12 @@ def expectiminimax(state,depth):
     #Best Min Pair of Value and Bot_Move
     bestMinPair = calculateBestPair(moveValueDict)
 
-    #return the "best" new_state (and maybe the move associated with it) - in get_dominant_move
     return bestMinPair
     
 #dict [(movePair) -> (value)] -> value move
+#calculates the "best move from the payoff matrix
+#   - payoff matrix stored as dictionary of movePair:value where each movepair can be viewed as a pair of column/row to specify a spot in the matrix
+#   - "best" is defined as the move that guarentees the highest return value (assume in all cases opponent makes decision that limits our score)
 def calculateBestPair(moveValueDict):
     moveMins = {}
     
@@ -72,6 +85,7 @@ def calculateBestPair(moveValueDict):
     return bestMinPair
 
 #state [pair of moves] -> list of pair of state and float
+#given a state and movepair return the possible resulting states and probability of reaching them
 def getResultingStatesAndProbs(state,movePair):
     StateProbPairs = []
     #get list of possible outcomes (as instructions to state on how to proceed)
@@ -86,17 +100,20 @@ def getResultingStatesAndProbs(state,movePair):
     return StateProbPairs
         
 #state -> list of pair of moves
+#gets all the possible movepairs in the given state
 def getAvailableMoves(state):
     userOptions, opponentOptions = state.get_all_options()
     userOptions = list(set(userOptions) - bannedMoves)
     return list(itertools.product(userOptions, opponentOptions))
 
 #list of pair of value and move -> move
-#given the best move/value from each possible version of the battle, return a given move
+#given the best move/value from each possible version of the battle, return the overall best move
+#   - "overall best move" is defined as the move that is best most often
 def pickMoveFromBattles(bestMovesList):
     moveCounter = Counter([moveVal[1] for moveVal in bestMovesList])
     return moveCounter.most_common(1)[0][0]
 
+#class representing a bot that selects moves based on an Expectiminimax algorithm
 class BattleBot(Battle):
     def __init__(self, *args, **kwargs):
         super(BattleBot, self).__init__(*args, **kwargs)

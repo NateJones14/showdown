@@ -1,16 +1,17 @@
 import constants
+from showdown.battle import Pokemon
 
 
 class Scoring:
-    POKEMON_ALIVE_STATIC = 75
-    POKEMON_HP = 100  # 100 points for 100% hp, 0 points for 0% hp. This is in addition to being alive
+    POKEMON_ALIVE_STATIC = 65
+    POKEMON_HP = 200
     POKEMON_HIDDEN = 10
     POKEMON_BOOSTS = {
-        constants.ATTACK: 15,
-        constants.DEFENSE: 15,
-        constants.SPECIAL_ATTACK: 15,
-        constants.SPECIAL_DEFENSE: 15,
-        constants.SPEED: 25,
+        constants.ATTACK: 12,
+        constants.DEFENSE: 12,
+        constants.SPECIAL_ATTACK: 12,
+        constants.SPECIAL_DEFENSE: 12,
+        constants.SPEED: 24,
         constants.ACCURACY: 3,
         constants.EVASION: 3
     }
@@ -32,37 +33,37 @@ class Scoring:
     }
 
     POKEMON_STATIC_STATUSES = {
-        constants.FROZEN: -40,
+        constants.FROZEN: -30,
         constants.SLEEP: -25,
-        constants.PARALYZED: -25,
-        constants.TOXIC: -30,
-        constants.POISON: -10,
+        constants.PARALYZED: -20,
+        constants.TOXIC: -25,
+        constants.POISON: -8,
         None: 0
     }
 
     @staticmethod
     def BURN(burn_multiplier):
-        return -25*burn_multiplier
+        return -30*burn_multiplier
 
     POKEMON_VOLATILE_STATUSES = {
-        constants.LEECH_SEED: -30,
+        constants.LEECH_SEED: -20,
         constants.SUBSTITUTE: 25,
         constants.CONFUSION: -20
     }
 
     STATIC_SCORED_SIDE_CONDITIONS = {
         constants.REFLECT: 20,
-        constants.STICKY_WEB: -25,
+        constants.STICKY_WEB: -24,
         constants.LIGHT_SCREEN: 20,
-        constants.AURORA_VEIL: 40,
+        constants.AURORA_VEIL: 30,
         constants.SAFEGUARD: 5,
-        constants.TAILWIND: 7,
+        constants.TAILWIND: 8,
     }
 
     POKEMON_COUNT_SCORED_SIDE_CONDITIONS = {
         constants.STEALTH_ROCK: -10,
-        constants.SPIKES: -7,
-        constants.TOXIC_SPIKES: -7,
+        constants.SPIKES: -5,
+        constants.TOXIC_SPIKES: -5,
     }
 
 
@@ -75,11 +76,11 @@ def evaluate_pokemon(pkmn):
     score += Scoring.POKEMON_HP * (float(pkmn.hp) / pkmn.maxhp)
 
     # boosts have diminishing returns
-    score += Scoring.POKEMON_BOOST_DIMINISHING_RETURNS[pkmn.attack_boost] * Scoring.POKEMON_BOOSTS[constants.ATTACK]
+    score += Scoring.POKEMON_BOOST_DIMINISHING_RETURNS[pkmn.attack_boost if pkmn.attack_boost >= -6 else -6] * Scoring.POKEMON_BOOSTS[constants.ATTACK]
     score += Scoring.POKEMON_BOOST_DIMINISHING_RETURNS[pkmn.defense_boost] * Scoring.POKEMON_BOOSTS[constants.DEFENSE]
     score += Scoring.POKEMON_BOOST_DIMINISHING_RETURNS[pkmn.special_attack_boost] * Scoring.POKEMON_BOOSTS[constants.SPECIAL_ATTACK]
     score += Scoring.POKEMON_BOOST_DIMINISHING_RETURNS[pkmn.special_defense_boost] * Scoring.POKEMON_BOOSTS[constants.SPECIAL_DEFENSE]
-    score += Scoring.POKEMON_BOOST_DIMINISHING_RETURNS[pkmn.speed_boost] * Scoring.POKEMON_BOOSTS[constants.SPEED]
+    score += Scoring.POKEMON_BOOST_DIMINISHING_RETURNS[pkmn.speed_boost if pkmn.speed_boost <= 6 else 6] * Scoring.POKEMON_BOOSTS[constants.SPEED]
     score += Scoring.POKEMON_BOOST_DIMINISHING_RETURNS[pkmn.accuracy_boost] * Scoring.POKEMON_BOOSTS[constants.ACCURACY]
     score += Scoring.POKEMON_BOOST_DIMINISHING_RETURNS[pkmn.evasion_boost] * Scoring.POKEMON_BOOSTS[constants.EVASION]
 
